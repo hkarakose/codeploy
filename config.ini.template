@@ -1,0 +1,6 @@
+[Settings]
+s3_bucket = codedeploy-202107
+target_file_key = workflow-engine-test.zip
+profile_name = default
+last_fetch_time = 2023-06-17 23:18:17+0000
+
