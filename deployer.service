@@ -1,0 +1,15 @@
+[Unit]
+Description=Deployer Service
+After=network.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/codeploy
+ExecStart=/usr/bin/python3 deployer.py
+SuccessExitStatus=143
+TimeoutStopSec=10
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
