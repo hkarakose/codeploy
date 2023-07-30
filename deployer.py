@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, filename="codeploy.log")
 logger = logging.getLogger(__name__)
 
 # Function to execute the specified shell script
