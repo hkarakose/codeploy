@@ -15,13 +15,15 @@ logger = logging.getLogger(__name__)
 
 # Function to execute the specified shell script
 def execute_shell_script(script_path):
-	logger.info(f"Executing shell script: {script_path}")
-	subprocess.run(["/bin/bash", script_path])
-	logger.info(f"Shell script execution complete: {script_path}")
+        logger.info(f"Executing shell script: {script_path}")
+        result=subprocess.getoutput(script_path)
+        logger.info(f"Shell script execution complete: {script_path}, {result}")
 
 
 # Function to install the application
 def install():
+	execute_shell_script("chmod +x ./bundle/hooks/*.sh")
+
 	# Execute ApplicationStop.sh
 	execute_shell_script("./bundle/hooks/ApplicationStop.sh")
 
@@ -38,7 +40,6 @@ def install():
 
 	# Execute ApplicationStart.sh
 	execute_shell_script("./bundle/hooks/ApplicationStart.sh")
-
 
 def arg_parser():
 	parser = argparse.ArgumentParser(description="Deployer Script")
