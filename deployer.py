@@ -138,6 +138,8 @@ while True:
 		logger.info("Version has changed. Downloading new file...")
 		download_file()
 
+		execute_shell_script("rm -rf ./bundle")
+
 		logger.info("Unzipping downloaded file...")
 		unzip_file()
 
