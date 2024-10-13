@@ -1,5 +1,6 @@
 import boto3
 import time
+import yaml
 import zipfile
 import os
 import subprocess
@@ -19,9 +20,29 @@ def execute_shell_script(script_path):
         result=subprocess.getoutput(script_path)
         logger.info(f"Shell script execution complete: {script_path}, {result}")
 
+# Function to parse appspec.yml and extract destination
+def get_destination_from_appspec(appspec_path):
+	logger.info("Get destination")
+
+	with open(appspec_path, 'r') as f:
+		appspec_content = yaml.safe_load(f)
+
+	# Assuming there's only one destination, fetching the first one
+	files_section = appspec_content.get('files', [])
+	if files_section and 'destination' in files_section[0]:
+		return files_section[0]['destination']
+	else:
+		logger.error("Destination not found.")
+		raise ValueError("Destination not found in appspec.yml")
 
 # Function to install the application
 def install():
+	logger.info("Installing")
+
+	# Get the destination from appspec.yml
+	destination = get_destination_from_appspec("./bundle/appspec.yml")
+	logger.info(f"Using destination: {destination}")
+
 	execute_shell_script("chmod +x ./bundle/hooks/*.sh")
 
 	# Execute ApplicationStop.sh
@@ -30,10 +51,9 @@ def install():
 	# Execute BeforeInstall.sh
 	execute_shell_script("./bundle/hooks/BeforeInstall.sh")
 
-	# Copy contents of ./codedeploy/ to /home/ec2-user
-	logger.info("Copying contents of ./bundle/ to /home/ec2-user")
-	os.makedirs("/home/ec2-user", exist_ok=True)
-	os.system("cp -R ./bundle/* /home/ec2-user/")
+	# Copy contents of ./bundle/ to the extracted destination
+	logger.info(f"Copying contents of ./bundle/ to {destination}")
+	os.system(f"cp -R ./bundle/* {destination}/")
 
 	# Execute AfterInstall.sh
 	execute_shell_script("./bundle/hooks/AfterInstall.sh")
@@ -131,10 +151,20 @@ def unzip_file():
 	logger.info("Unzip complete")
 
 
+installation_in_progress_counter = 0
 while True:
+	installation_in_progress = config.get("Settings", "installation_in_progress")
+
 	version_changed = has_version_changed(bucket_name=s3_bucket, file_name=target_file_key)
 
-	if version_changed:
+	if installation_in_progress_counter > 10:
+		logger.error("Installation took more than 10 minutes!")
+	elif installation_in_progress == "true":
+		logger.error("There is an installation in progress")
+		installation_in_progress_counter = installation_in_progress_counter + 1
+	elif version_changed:
+		installation_in_progress_counter = 0
+		config.set("Settings", "installation_in_progress", "true")
 		logger.info("Version has changed. Downloading new file...")
 		download_file()
 
@@ -144,6 +174,7 @@ while True:
 		unzip_file()
 
 		install()
+		config.set("Settings", "installation_in_progress", "false")
 	else:
 		logger.info("Version not changed")
 
