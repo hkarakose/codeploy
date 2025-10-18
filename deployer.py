@@ -112,6 +112,20 @@ def unzip_file(config_section, target_file_key):
 		zip_ref.extractall("./" + config_section)
 	logger.info("Unzip complete")
 
+def deploy(s3_client, s3_bucket, target_file_key, target_file_uri, config_section):
+	logger.info("Version has changed. Downloading new file...")
+	download_file(s3_client, s3_bucket, target_file_key, target_file_uri)
+
+	execute_shell_script("rm -rf ./bundle")
+
+	logger.info("Unzipping downloaded file...")
+	unzip_file(config_section, target_file_key)
+
+	install(config_section)
+	config.set(config_section, "installation_in_progress", "false")
+	with open(config_file, "w") as f:
+		config.write(f)
+  
 def main_for_section(config_section):
 	logger.info(f"Using configuration section: {config_section}")
 
@@ -170,23 +184,19 @@ def main_for_section(config_section):
 			config.set(config_section, "installation_in_progress", "true")
 			with open(config_file, "w") as f:
 				config.write(f)
-			logger.info("Version has changed. Downloading new file...")
-			download_file(s3_client, s3_bucket, target_file_key, target_file_uri)
-
-			execute_shell_script("rm -rf ./bundle")
-
-			logger.info("Unzipping downloaded file...")
-			unzip_file(config_section,target_file_key)
-
-			install(config_section)
-			config.set(config_section, "installation_in_progress", "false")
-			with open(config_file, "w") as f:
-				config.write(f)
+			
+			try:
+				deploy(s3_client, s3_bucket, target_file_key, target_file_uri, config_section)
+			except Exception as e:
+				logger.error(f"Deployment failed: {e}")
+				config.set(config_section, "installation_in_progress", "false")
+				with open(config_file, "w") as f:
+					config.write(f)
 		else:
 			logger.info("Version not changed")
 
 		logger.info("Sleep for 60 seconds before polling again")
-		time.sleep(60)
+		time.sleep(60)		
 
 if __name__ == "__main__":
 	# Read the configuration file
