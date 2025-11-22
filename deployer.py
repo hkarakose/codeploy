@@ -172,29 +172,29 @@ def main_for_section(config_section):
 	while True:
 		installation_in_progress = config.get(config_section, "installation_in_progress")
 
-		version_changed = has_version_changed(s3_client=s3_client, bucket_name=s3_bucket, file_name=target_file_key, section_name=config_section)
-
 		if installation_in_progress_counter > 10:
 			logger.error("Installation took more than 10 minutes!")
 		elif installation_in_progress == "true":
 			logger.error("There is an installation in progress")
 			installation_in_progress_counter = installation_in_progress_counter + 1
-		elif version_changed:
-			installation_in_progress_counter = 0
-			config.set(config_section, "installation_in_progress", "true")
-			with open(config_file, "w") as f:
-				config.write(f)
-			
+		else:
 			try:
-				deploy(s3_client, s3_bucket, target_file_key, target_file_uri, config_section)
+				print("Checking for new version...")
+				version_changed = has_version_changed(s3_client=s3_client, bucket_name=s3_bucket, file_name=target_file_key, section_name=config_section)
+				if version_changed:
+					installation_in_progress_counter = 0
+					config.set(config_section, "installation_in_progress", "true")
+					with open(config_file, "w") as f:
+						config.write(f)
+					deploy(s3_client, s3_bucket, target_file_key, target_file_uri, config_section)
+				else:
+					logger.info("Version not changed")
 			except Exception as e:
 				logger.error(f"Deployment failed: {e}")
 				config.set(config_section, "installation_in_progress", "false")
 				with open(config_file, "w") as f:
 					config.write(f)
-		else:
-			logger.info("Version not changed")
-
+    
 		logger.info("Sleep for 60 seconds before polling again")
 		time.sleep(60)		
 
