@@ -173,7 +173,7 @@ def main_for_section(config_section):
 	target_file_uri = f"s3://{s3_bucket}/{target_file_key}"
 
 	installation_in_progress_counter = 0
-	interval_seconds = 60
+	interval_seconds = 120
 	while True:
 		installation_in_progress = config.get(config_section, "installation_in_progress")
 
