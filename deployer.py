@@ -107,7 +107,7 @@ def download_file(s3_client, s3_bucket, target_file_key, target_file_uri):
 
 # Function to unzip the downloaded file
 def unzip_file(config_section, target_file_key):
-	logger.info(f"Unzipping file: {target_file_key}")
+	logger.info(f"Unzipping file: {target_file_key} to ./{config_section}/")
 	with zipfile.ZipFile(target_file_key, "r") as zip_ref:
 		zip_ref.extractall("./" + config_section)
 	logger.info("Unzip complete")
@@ -125,6 +125,10 @@ def deploy(s3_client, s3_bucket, target_file_key, target_file_uri, config_sectio
 	config.set(config_section, "installation_in_progress", "false")
 	with open(config_file, "w") as f:
 		config.write(f)
+  
+	cleanup_command = f"rm -rf ./{config_section} && rm -f {target_file_key}"
+	logger.info(f"Cleaning up temporary files with command: {cleanup_command}")
+	os.system(cleanup_command)
   
 def main_for_section(config_section):
 	logger.info(f"Using configuration section: {config_section}")
@@ -169,6 +173,7 @@ def main_for_section(config_section):
 	target_file_uri = f"s3://{s3_bucket}/{target_file_key}"
 
 	installation_in_progress_counter = 0
+	interval_seconds = 60
 	while True:
 		installation_in_progress = config.get(config_section, "installation_in_progress")
 
@@ -195,8 +200,8 @@ def main_for_section(config_section):
 				with open(config_file, "w") as f:
 					config.write(f)
     
-		logger.info("Sleep for 60 seconds before polling again")
-		time.sleep(60)		
+		logger.info(f"Sleep for {interval_seconds} seconds before polling again")
+		time.sleep(interval_seconds)		
 
 if __name__ == "__main__":
 	# Read the configuration file
